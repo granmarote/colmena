@@ -270,7 +270,9 @@ export function pauseIsFatal(state: GameState): boolean {
   if (!info) return livingTeams(state).length === 0 || !state.charlie.alive;
   if (info.kind === "found") return false;
   if (info.kind === "charlie-o2") return true;
-  if (info.kind === "oxygen") return livingTeams(state).length === 0 || !state.charlie.alive;
+  if (info.kind === "oxygen" || info.kind === "alien") {
+    return livingTeams(state).length === 0 || !state.charlie.alive;
+  }
   return livingTeams(state).length === 0 || info.charlieHit;
 }
 
@@ -315,6 +317,21 @@ function openOxygenPause(state: GameState, team: Team): void {
     victimId: team.id === 1 ? 1 : 0,
     joined,
     charlieDropped: held && state.charlie.alive,
+  });
+}
+
+function killByAlien(state: GameState, team: Team, how: "strike" | "no-ammo"): void {
+  const joined = state.joined;
+  const held = isCarrier(state, team) || (joined && state.carrying !== null);
+  const reason =
+    how === "strike" ? "was torn apart." : "had no ammo left to fight.";
+  killTeam(state, team, reason, false);
+  enterPause(state, {
+    kind: "alien",
+    victimId: team.id === 1 ? 1 : 0,
+    joined,
+    charlieDropped: held && state.charlie.alive,
+    how,
   });
 }
 
@@ -476,11 +493,11 @@ function arrive(state: GameState, team: Team, tile: Tile, firstLook: boolean): v
     team.hp -= 1;
     pushLog(state, `${FACE.alien} Ambush! It strikes first. ${label} −1 life.`);
     if (team.hp <= 0) {
-      killTeam(state, team, "was torn apart.", false);
+      killByAlien(state, team, "strike");
       return;
     }
     if (team.ammo <= 0) {
-      killTeam(state, team, "had no ammo left to fight.", false);
+      killByAlien(state, team, "no-ammo");
     }
     return;
   }
@@ -541,9 +558,7 @@ function doFire(state: GameState): GameState {
   const tile = state.tiles[state.combatKey];
   if (!team.alive || !tile || !tileHasLiveAlien(tile)) return state;
   if (team.ammo <= 0) {
-    killTeam(state, team, "had no ammo left to fight.", false);
-    applyFog(state);
-    passTurn(state);
+    killByAlien(state, team, "no-ammo");
     return state;
   }
   team.ammo -= 1;
@@ -560,9 +575,7 @@ function doFire(state: GameState): GameState {
   }
   pushLog(state, `${FACE.alien} Wounded. Still standing. Ammo left: ${team.ammo}.`);
   if (team.ammo <= 0) {
-    killTeam(state, team, "emptied the clip and the alien finished them.", false);
-    applyFog(state);
-    passTurn(state);
+    killByAlien(state, team, "no-ammo");
   }
   return state;
 }

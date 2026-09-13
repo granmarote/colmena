@@ -1,6 +1,7 @@
 import { hexPolygon, key, toPixel } from "./hex";
 import { pauseIsFatal, computeSignals, legalHexes, occupantAt } from "./rules";
 import {
+  ALIEN_BANNER,
   ALIEN_HP,
   BLAST_BANNER,
   CHARLIE_O2_BANNER,
@@ -277,32 +278,51 @@ function blastLines(state: GameState, info: Extract<PauseInfo, { kind: "blast" }
   return lines;
 }
 
-function oxygenLines(state: GameState, info: Extract<PauseInfo, { kind: "oxygen" }>): string[] {
-  const fatal = pauseIsFatal(state);
-  const victim = state.teams[info.victimId];
+function leftoverLines(
+  state: GameState,
+  info: { victimId: 0 | 1; joined: boolean; charlieDropped: boolean },
+  fatal: boolean,
+): string[] {
   const other = state.teams[info.victimId === 0 ? 1 : 0];
-  const lines = [`${victim.emoji} ${victim.name} ran out of oxygen and is gone.`];
   if (info.joined) {
-    lines.push("The joined party shared one air supply. Everyone in it is down.");
+    const lines = ["The joined party is down. Everyone in it is gone."];
     if (info.charlieDropped) {
       lines.push("Charlie was with them and is now stranded. No one is left to finish the rescue.");
     } else {
       lines.push("No one is left to bring Charlie home. The rescue is over.");
     }
-  } else if (fatal) {
-    if (info.charlieDropped) {
-      lines.push("Charlie is down on the wreck, but no one is left to carry them to a ship.");
-    } else {
-      lines.push("No one is left. The rescue is over.");
-    }
-  } else if (info.charlieDropped) {
-    lines.push(
-      `Charlie is down on that hex. ${other.emoji} ${other.name} can still pick them up and get to either ${SHIP_FACE}.`,
-    );
-  } else {
-    lines.push(`${other.emoji} ${other.name} can still search — watch the O₂.`);
+    return lines;
   }
-  return lines;
+  if (fatal) {
+    if (info.charlieDropped) {
+      return ["Charlie is down on the wreck, but no one is left to carry them to a ship."];
+    }
+    return ["No one is left. The rescue is over."];
+  }
+  if (info.charlieDropped) {
+    return [
+      `Charlie is down on that hex. ${other.emoji} ${other.name} can still pick them up and get to either ${SHIP_FACE}.`,
+    ];
+  }
+  return [`${other.emoji} ${other.name} can still search.`];
+}
+
+function oxygenLines(state: GameState, info: Extract<PauseInfo, { kind: "oxygen" }>): string[] {
+  const victim = state.teams[info.victimId];
+  return [
+    `${victim.emoji} ${victim.name} ran out of oxygen and is gone.`,
+    ...leftoverLines(state, info, pauseIsFatal(state)),
+  ];
+}
+
+function alienLines(state: GameState, info: Extract<PauseInfo, { kind: "alien" }>): string[] {
+  const victim = state.teams[info.victimId];
+  const who = info.joined ? "The joined party" : `${victim.emoji} ${victim.name}`;
+  const cause =
+    info.how === "strike"
+      ? `${who} walked into an alien. It struck first and tore them apart.`
+      : `${who} had no ammo left. The alien finished them.`;
+  return [cause, ...leftoverLines(state, info, pauseIsFatal(state))];
 }
 
 function charlieO2Lines(): string[] {
@@ -339,6 +359,11 @@ function pauseOverlay(state: GameState): string {
     banner = OXYGEN_BANNER;
     variant = "oxygen";
     lines = oxygenLines(state, info);
+  } else if (info.kind === "alien") {
+    kicker = "Contact lost";
+    banner = ALIEN_BANNER;
+    variant = "alien";
+    lines = alienLines(state, info);
   } else if (info.kind === "charlie-o2") {
     kicker = "Survivor lost";
     banner = CHARLIE_O2_BANNER;

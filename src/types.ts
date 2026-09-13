@@ -62,6 +62,13 @@ export type PauseInfo =
       charlieDropped: boolean;
     }
   | {
+      kind: "alien";
+      victimId: 0 | 1;
+      joined: boolean;
+      charlieDropped: boolean;
+      how: "strike" | "no-ammo";
+    }
+  | {
       kind: "charlie-o2";
     }
   | {
@@ -110,5 +117,6 @@ export const SHIP_FACE = "🚀";
 export const GRAVE_FACE = "☠️";
 export const BLAST_BANNER = "🔥🔥☢️🔥🔥";
 export const OXYGEN_BANNER = "🫧☠️🫧";
+export const ALIEN_BANNER = "👽☠️";
 export const CHARLIE_O2_BANNER = "🧑‍🚀🫧☠️";
 export const FOUND_BANNER = "🧑‍🚀🚀";

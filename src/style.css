@@ -427,6 +427,10 @@ dd {
   border-color: #5ec8ff;
 }
 
+.overlay.alien {
+  border-color: var(--danger);
+}
+
 .overlay.found {
   border-color: var(--accent);
 }
@@ -439,6 +443,7 @@ dd {
 
 .overlay.blast p + p,
 .overlay.oxygen p + p,
+.overlay.alien p + p,
 .overlay.found p + p {
   margin-top: -8px;
 }
